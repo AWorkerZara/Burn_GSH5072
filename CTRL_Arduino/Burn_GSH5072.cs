@@ -3,10 +3,9 @@ using System.IO.Ports;
 using System.Management;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Windows.Forms;
+using System.Reflection;
 
 namespace CTRL_Arduino
 {
@@ -16,6 +15,9 @@ namespace CTRL_Arduino
         {
             InitializeComponent();
             Find_Arduino_Comport();
+
+            var version = Assembly.GetExecutingAssembly().GetName().Version;
+            this.Text += "  " +version.ToString(); 
         }
 
         public delegate void LabelRenewCallback(Control Target_Label, string Msg);

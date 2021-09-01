@@ -22,3 +22,9 @@ D:\[Scott]\[11][Git]\CTRL_Arduino\CTRL_Arduino\obj\Debug\CTRL_Arduino.csproj.Gen
 D:\[Scott]\[11][Git]\CTRL_Arduino\Burn_GSH5072\CTRL_Arduino\bin\Debug\CTRL_Arduino.exe.config
 D:\[Scott]\[11][Git]\CTRL_Arduino\Burn_GSH5072\CTRL_Arduino\obj\Debug\CTRL_Arduino.exe
 D:\[Scott]\[11][Git]\CTRL_Arduino\Burn_GSH5072\CTRL_Arduino\obj\Debug\CTRL_Arduino.pdb
+D:\[Scott]\[11][Git]\CTRL_Arduino\Burn_GSH5072\CTRL_Arduino\bin\Debug\CTRL_Arduino.exe
+D:\[Scott]\[11][Git]\CTRL_Arduino\Burn_GSH5072\CTRL_Arduino\bin\Debug\CTRL_Arduino.pdb
+D:\[Scott]\[11][Git]\CTRL_Arduino\Burn_GSH5072\CTRL_Arduino\obj\Debug\CTRL_Arduino.csprojResolveAssemblyReference.cache
+D:\[Scott]\[11][Git]\CTRL_Arduino\Burn_GSH5072\CTRL_Arduino\obj\Debug\CTRL_Arduino.Burn_GSH5072.resources
+D:\[Scott]\[11][Git]\CTRL_Arduino\Burn_GSH5072\CTRL_Arduino\obj\Debug\CTRL_Arduino.Properties.Resources.resources
+D:\[Scott]\[11][Git]\CTRL_Arduino\Burn_GSH5072\CTRL_Arduino\obj\Debug\CTRL_Arduino.csproj.GenerateResource.Cache
