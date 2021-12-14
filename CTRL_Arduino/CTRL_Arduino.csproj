@@ -37,8 +37,10 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
+    <Reference Include="System.configuration" />
     <Reference Include="System.Core" />
     <Reference Include="System.Management" />
+    <Reference Include="System.Messaging" />
     <Reference Include="System.Windows.Forms.DataVisualization" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -51,16 +53,58 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Analog_Input.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Analog_Input.Designer.cs">
+      <DependentUpon>Analog_Input.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Arduino_CLI.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Arduino_CLI.Designer.cs">
+      <DependentUpon>Arduino_CLI.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Arduino_Message.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Arduino_Message.Designer.cs">
+      <DependentUpon>Arduino_Message.cs</DependentUpon>
+    </Compile>
     <Compile Include="Burn_GSH5072.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Burn_GSH5072.Designer.cs">
       <DependentUpon>Burn_GSH5072.cs</DependentUpon>
     </Compile>
+    <Compile Include="Form1.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Form1.Designer.cs">
+      <DependentUpon>Form1.cs</DependentUpon>
+    </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Test_Arduino_Code.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Test_Arduino_Code.Designer.cs">
+      <DependentUpon>Test_Arduino_Code.cs</DependentUpon>
+    </Compile>
+    <EmbeddedResource Include="Analog_Input.resx">
+      <DependentUpon>Analog_Input.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Arduino_CLI.resx">
+      <DependentUpon>Arduino_CLI.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Arduino_Message.resx">
+      <DependentUpon>Arduino_Message.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Burn_GSH5072.resx">
       <DependentUpon>Burn_GSH5072.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Form1.resx">
+      <DependentUpon>Form1.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
@@ -71,6 +115,9 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <EmbeddedResource Include="Test_Arduino_Code.resx">
+      <DependentUpon>Test_Arduino_Code.cs</DependentUpon>
+    </EmbeddedResource>
     <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>

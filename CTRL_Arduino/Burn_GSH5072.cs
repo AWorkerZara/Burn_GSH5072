@@ -3,21 +3,23 @@ using System.IO.Ports;
 using System.Management;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Windows.Forms;
-using System.Reflection;
 
 namespace CTRL_Arduino
 {
     public partial class Burn_GSH5072 : Form
     {
+        public Arduino_Message AMsg = new Arduino_Message();
+
         public Burn_GSH5072()
         {
             InitializeComponent();
             Find_Arduino_Comport();
-
-            var version = Assembly.GetExecutingAssembly().GetName().Version;
-            this.Text += "  " +version.ToString(); 
+            AMsg.Show();
+            AMsg.Visible = false;
         }
 
         public delegate void LabelRenewCallback(Control Target_Label, string Msg);
@@ -206,7 +208,7 @@ namespace CTRL_Arduino
             //    Thread.Sleep(500);
             //    Update();
             //}
-           Renew_TextBox_Message(e.NewEvent.ClassPath.ClassName.ToString() + con.ToString());
+            Renew_TextBox_Message(e.NewEvent.ClassPath.ClassName.ToString() + con.ToString());
             con++;
         }
 
@@ -293,64 +295,137 @@ namespace CTRL_Arduino
         }
         private void button_Connect_Comport_Click(object sender, EventArgs e)
         {
+
             if (button_Connect_Comport.Text == "連線")
             {
                 if (serialPort_Arduino == null)
                     serialPort_Arduino = new SerialPort();
-
-                serialPort_Arduino.PortName = comboBox_Comport_List.SelectedItem.ToString();
-                serialPort_Arduino.Open();
-                button_Connect_Comport.Text = "斷線";
-                button_Burn.Enabled = true;
-                comboBox_Comport_List.Enabled = false;
-                button_Search_ComPort.Enabled = false;
+                try
+                {
+                    serialPort_Arduino.PortName = comboBox_Comport_List.SelectedItem.ToString();
+                    serialPort_Arduino.Open();
+                    //serialPort_Arduino.DiscardInBuffer();
+                    Thread.Sleep(500);
+                    //serialPort_Arduino.Write("ChkFixtureSum");
+                    serialPort_Arduino.Write("ShowVer");
+                    //Thread.Sleep(100);
+                    button_Connect_Comport.Text = "斷線";
+                    button_Burn.Enabled = true;
+                    comboBox_Comport_List.Enabled = false;
+                    button_Search_ComPort.Enabled = false;
+                }
+                catch (Exception rr)
+                {
+                    MessageBox.Show(rr.Message);
+                }
             }
             else
             {
+
+                serialPort_Arduino.DiscardInBuffer();
                 serialPort_Arduino.Close();
                 serialPort_Arduino.Dispose();
                 button_Connect_Comport.Text = "連線";
                 button_Burn.Enabled = false;
                 comboBox_Comport_List.Enabled = true;
                 button_Search_ComPort.Enabled = true;
+                
             }
+
         }
 
+        private string InHereChecksum;
         private bool FirstTimeDetech = true;
         private bool showOneTime = true;
         private void serialPort_Arduino_DataReceived(object sender, System.IO.Ports.SerialDataReceivedEventArgs e)
         {
+            DateTime TD = new DateTime();
+            TimeSpan TS;
+            TD = DateTime.Now;
             string value = "";
             try
             {
                 if (serialPort_Arduino != null && serialPort_Arduino.BytesToRead > 0)
                 {
+                    TD = DateTime.Now;
                     value = serialPort_Arduino.ReadExisting();
+                    AMsg.Renew_Message(value);
 
                     if (value.Length < 10)
                     {
+                        this.Invoke(new Action(() =>
+                        {
+                            label_Recive.Visible = true;
+                            label_Data1.Visible = true;
+                            label_Data2.Visible = true;
+                        }));
+    
                         WriteOutInfo(value);
                         a2 = DateTime.Now;
                         TimeSpan ts = a2 - a1;
                         Renew_TextBox_Message("花費時間：" + ts.ToString("s\\.fff") + "秒");
 
-                        if(checkBox_Auto_Add.Checked)
+                        if (checkBox_Auto_Add.Checked)
                             ItemNumberAdd(textBox_Device_Number);
 
-                        int Close_Time = ((int)numericUpDown_Close_Delay_Time.Value)*1000;
+                        int Close_Time = ((int)numericUpDown_Close_Delay_Time.Value) * 1000;
                         Thread.Sleep(Close_Time);
                         serialPort_Arduino.Write("CCam");
+
+
                     }
                     else
                     {
+                        value = value.Replace(System.Environment.NewLine, string.Empty);
+                        string[] value_CRC32 = value.Split(' ');
+
+                        if(value_CRC32.Length == 3)
+                        {
+                            if (value_CRC32[0] == "CheckFixture(CRC32)")
+                            {
+                                Thread Juedge_Now_Arduino_File_Ver_Thread = new Thread(new ParameterizedThreadStart(Juedge_Now_Arduino_File_Ver));
+                                Juedge_Now_Arduino_File_Ver_Thread.Start(value_CRC32[2]);
+                            }
+                            if (value_CRC32[0] == "Read_ChkSum")
+                            {
+                                Thread Juedge_Now_Arduino_File_Ver_Thread = new Thread(new ParameterizedThreadStart(Flash_Now_Burn_Ver));
+                                Juedge_Now_Arduino_File_Ver_Thread.Start(value_CRC32[2]);
+                                InHereChecksum = value_CRC32[2];
+                            }
+
+                        }
+                        if(value_CRC32.Length == 4)
+                        {
+                            if (value_CRC32[1] == "AHD" || value_CRC32[1] == "TVI")
+                            {
+                                this.Invoke(new Action(() =>
+                                {
+                                    label_Fixture_ImgFormar.Text = value_CRC32[1];
+                                    label_Fixture_FPS.Text = value_CRC32[2];
+                                    label_Fixture_Rev.Text = value_CRC32[3];
+                                    groupBox_Jil_FileVer.Text = "目前治具檔案版本 : " + value_CRC32[0];
+                                }));
+                            }
+                        }
+
+                        if (value_CRC32.Length >= 5)
+                            return;
+
                         if (showOneTime)
                         {
-                            if (value == "Start Wating Burn Command:\r\n")
+                            if (value == "Start Wating Burn Command:")
                             {
                                 if (!FirstTimeDetech)
                                     MessageBox.Show("找不到裝置", " 裝置錯誤 ");
                                 FirstTimeDetech = false;
+                                Thread.Sleep(100);
+                                //serialPort_Arduino.Write("CheckFixtureSum");
+                                serialPort_Arduino.Write("ShowVer");
                             }
+                            else if(value_CRC32[0] == "CheckFixture(CRC32)") { }
+                            else if (value_CRC32[0] == "ReadFlash(CRC32)") { }
+                            else if (value_CRC32[0] == "Read_ChkSum") { }
+                            else if (value_CRC32.Length == 4) { }
                             else
                             {
                                 MessageBox.Show(value, " 燒錄錯誤 ");
@@ -359,11 +434,15 @@ namespace CTRL_Arduino
                         }
                     }
 
+                    TS = DateTime.Now - TD;
+                    AMsg.Renew_Message("Response Time = " + TS.ToString("s\\.fff"));
+                    
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show("讀取串口數據發生錯誤：" + ex.Message, "提示信息", MessageBoxButtons.OK, MessageBoxIcon.Information);
+              //  if(ex.Message != "\r\n")
+                //    MessageBox.Show("讀取串口數據發生錯誤：" + ex.Message, "提示信息", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             Enable_Button(true);
         }
@@ -371,7 +450,11 @@ namespace CTRL_Arduino
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
             if (serialPort_Arduino.IsOpen)
+            {
+                serialPort_Arduino.DiscardInBuffer();
                 serialPort_Arduino.Close();
+                serialPort_Arduino.Dispose();
+            }
         }
 
         private void Enable_Button(bool En)
@@ -382,21 +465,35 @@ namespace CTRL_Arduino
 
         DateTime a1, a2;
 
+        
+        long Burn_Serial_Number;
         private void button_Burn_Click(object sender, EventArgs e)
         {
             string BurnStyle = "";
+            //serialPort_Arduino.Write("Now Voltage");            
+
             if (checkBox_Burn_Check.Checked)
                 BurnStyle = "BurnChk";
             else
                 BurnStyle = "Burn";
+
+            panel_Burn_Result.Visible = false;
+
+            Burn_Serial_Number = Int64.Parse(textBox_Device_Number.Text);
 
             Enable_Button(false);
             progressBar1.Visible = true;
             FirstTimeDetech = false;
 
             a1 = DateTime.Now;
+
+
             serialPort_Arduino.Write(BurnStyle);
             showOneTime = true;
+
+            label_Recive.Visible = false;
+            label_Data1.Visible = false;
+            label_Data2.Visible = false;
         }
 
         private void button_Burn_EnabledChanged(object sender, EventArgs e)
@@ -416,16 +513,16 @@ namespace CTRL_Arduino
         {
             //string docPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
             DateTime nDT = DateTime.Now;
-            string nowTime = nDT.ToString("MMdd");
+            string nowTime = nDT.ToString("yyyyMMdd");
             string[] sVolt = sData.Split(',');
             float[] Catch_Volt = new float[2];
 
 
             for (int i = 0; i < sVolt.Length; i++)
-                Catch_Volt[i] = (float.Parse(sVolt[i]) / 1024) * 4.65f; //// [(simple/total)*max-Voltage]
+                Catch_Volt[i] = (float.Parse(sVolt[i]) / 1024) * 4.65f; //// [(sample/total)*max-Voltage]
 
 
-            string new_SData = "[" + nDT.ToString("HH:mm:ss") + "] 編號= " + textBox_Device_Number.Text + " , " + Catch_Volt[0].ToString("0.00") + " V, " + Catch_Volt[1].ToString("0.00") + " V  ";
+            string new_SData = nDT.ToString("yyyy/MM/dd") + " " + nDT.ToString("HH:mm:ss") + "," + textBox_Device_Number.Text + "," + Catch_Volt[0].ToString("0.00") + "V," + Catch_Volt[1].ToString("0.00") + "V,";
 
             //Renew_TextBox_Message(sData + " ; " + new_SData);
             Renew_Burn_Result_2_Message(label_Data1.Text);
@@ -434,7 +531,7 @@ namespace CTRL_Arduino
             Renew_Juedge_Value();
 
             Renew_Burn_Result_String_Message(Juedge_OK_NG(Catch_Volt));
-            List<string> BufferList = new List<string>(); 
+            List<string> BufferList = new List<string>();
             try
             {
                 StreamReader sr = new StreamReader(nowTime + ".txt", true);
@@ -450,12 +547,13 @@ namespace CTRL_Arduino
             StreamWriter sw = new StreamWriter(nowTime + ".txt");
 
             sw.WriteLine(new_SData + label_Juedge_Result.Text);
-            for(int i = 0; i < BufferList.Count; i++)
+            for (int i = 0; i < BufferList.Count; i++)
                 sw.WriteLine(BufferList[i]);
 
             sw.Close();
 
         }
+
 
         private string Juedge_OK_NG(float[] catch_Volt)
         {
@@ -480,8 +578,8 @@ namespace CTRL_Arduino
 
         private bool Juedge_Rule(float jV1_P, float v, float jV1_N)
         {
-            if(jV1_P > v)
-                if(jV1_N < v)
+            if (jV1_P > v)
+                if (jV1_N < v)
                     return true;
             return false;
         }
@@ -492,6 +590,20 @@ namespace CTRL_Arduino
         float JV2 = 1.8f;
         float JV1_err = 1.0f;
         float JV2_err = 1.0f;
+
+        private void button_Change_Jil_File_Click(object sender, EventArgs e)
+        {
+            if(serialPort_Arduino.IsOpen)
+            {
+                serialPort_Arduino.Close();
+                serialPort_Arduino.Dispose();
+                button_Connect_Comport.Text = "連線";
+                button_Burn.Enabled = false;
+                comboBox_Comport_List.Enabled = true;
+                button_Search_ComPort.Enabled = true;
+            }
+            new Arduino_CLI().Show();
+        }
 
         private void Renew_Juedge_Value()
         {
@@ -511,6 +623,162 @@ namespace CTRL_Arduino
         }
 
 
+        private void Juedge_Now_Arduino_File_Ver(object o_Arduino_CRC32)
+        {
+            string Arduino_CRC32 = (string)o_Arduino_CRC32;
+
+            switch(Arduino_CRC32)
+            {
+                case "e4be237e":
+                    this.Invoke( new Action( () =>
+                    {
+                        label_Fixture_ImgFormar.Text = "TVI";
+                        label_Fixture_FPS.Text = "30 FPS";
+                        label_Fixture_Rev.Text = "REV12";
+                        groupBox_Jil_FileVer.Text = "目前治具檔案版本 : FWF006-AGS-00";
+                    } ));
+                    break;
+                case "24251357":
+                    this.Invoke(new Action(() =>
+                    {
+                        label_Fixture_ImgFormar.Text = "TVI";
+                        label_Fixture_FPS.Text = "30 FPS";
+                        label_Fixture_Rev.Text = "REV7";
+                        groupBox_Jil_FileVer.Text = "目前治具檔案版本 : FWF006-CGS-00";
+                    }));
+                    break;
+                case "282c5672":
+                    this.Invoke(new Action(() =>
+                    {
+                        label_Fixture_ImgFormar.Text = "TVI";
+                        label_Fixture_FPS.Text = "30 FPS";
+                        label_Fixture_Rev.Text = "RVE0";
+                        groupBox_Jil_FileVer.Text = "目前治具檔案版本 : FWF006-BGS-00";
+                    }));
+                    break;
+                case "5211112a":
+                    this.Invoke(new Action(() =>
+                    {
+                        label_Fixture_ImgFormar.Text = "AHD";
+                        label_Fixture_FPS.Text = "30 FPS";
+                        label_Fixture_Rev.Text = "RVE2";
+                        groupBox_Jil_FileVer.Text = "目前治具檔案版本 : FWF006-BGS-01";
+                    }));
+                    break;
+                case "be1c8cff":
+                    this.Invoke(new Action(() =>
+                    {
+                        label_Fixture_ImgFormar.Text = "AHD";
+                        label_Fixture_FPS.Text = "30 FPS";
+                        label_Fixture_Rev.Text = " 1 ";
+                        groupBox_Jil_FileVer.Text = "目前治具檔案版本 : FWA006-AGS-00";
+                    }));
+                    break;
+                case "e53d93cd":
+                    this.Invoke(new Action(() =>
+                    {
+                        label_Fixture_ImgFormar.Text = "AHD";
+                        label_Fixture_FPS.Text = "25 FPS";
+                        label_Fixture_Rev.Text = "Rev0";
+                        groupBox_Jil_FileVer.Text = "目前治具檔案版本 : FWF006-AIV-01";
+                    }));
+                    break;
+                case "3d0d4491":
+                    this.Invoke(new Action(() =>
+                    {
+                        label_Fixture_ImgFormar.Text = "AHD";
+                        label_Fixture_FPS.Text = "25 FPS";
+                        label_Fixture_Rev.Text = "Rev1";
+                        groupBox_Jil_FileVer.Text = "目前治具檔案版本 : FWF006-AIV-00";
+                    }));
+                    break;
+                case "57d55b11":
+                    this.Invoke(new Action(() =>
+                    {
+                        label_Fixture_ImgFormar.Text = "AHD";
+                        label_Fixture_FPS.Text = "25 FPS";
+                        label_Fixture_Rev.Text = "Rev2";
+                        groupBox_Jil_FileVer.Text = "目前治具檔案版本 : FWF006-AIV-02";
+                    }));
+                    break;
+                default:
+                    this.Invoke(new Action(() =>
+                    {
+                        label_Fixture_ImgFormar.Text = "-----";
+                        label_Fixture_FPS.Text = "-- FPS";
+                        label_Fixture_Rev.Text = "-----";
+                        groupBox_Jil_FileVer.Text = "目前治具檔案版本";
+                    }));
+                    break;
+            }
+           
+
+        }
+
+        private void panel_Show_Msg_DoubleClick(object sender, EventArgs e)
+        {
+            AMsg.Visible = !AMsg.Visible;
+        }
+
+        private void Flash_Now_Burn_Ver(object o_Arduino_CRC32)
+        {
+            string Arduino_CRC32 = (string)o_Arduino_CRC32;
+            string FW_Num = "";
+            string Burn_Serial_stream = Burn_Serial_Number.ToString();
+            switch (Arduino_CRC32)
+            {
+                case "e4be237e":
+                    FW_Num = "FWF006-AGS-00";
+                    break;
+                case "24251357":
+                    FW_Num = "FWF006-CGS-00";
+                    break;
+                case "282c5672":
+                    FW_Num = "FWF006-BGS-00";
+                    break;
+                case "5211112a":
+                    FW_Num = "FWF006-BGS-01";
+                    break;
+                case "be1c8cff":
+                    FW_Num = "FWA006-AGS-00";
+                    break;
+                case "e53d93cd":
+                    FW_Num = "FWF006-AIV-01";
+                    break;
+                case "3d0d4491":
+                    FW_Num = "FWF006-AIV-00";
+                    break;
+                case "57d55b11":
+                    FW_Num = "FWF006-AIV-02";
+                    break;
+                default:
+                    FW_Num = "No Register";
+                    break;
+            }
+
+            //if (InHereChecksum != "")
+            //    FW_Num = InHereChecksum;
+
+            string[] thisVer = groupBox_Jil_FileVer.Text.Split(':');
+
+            this.Invoke(new Action(() =>
+            {
+                label_Device_Number.Text = Burn_Serial_stream;
+                //label_Burn_Result_Ver.Text = FW_Num;
+                label_Burn_Result_Ver.Text = thisVer[1];
+            }));
+
+            for(int i = 0; i < 7; i++)
+            {
+                this.Invoke(new Action(() =>
+                {
+                    panel_Burn_Result.Visible = !panel_Burn_Result.Visible;
+                }));
+                Thread.Sleep(250);
+            }
+
+            
+        }
 
 
     }

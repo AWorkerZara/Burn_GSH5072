@@ -11,18 +11,18 @@ void Read_I2C(byte addr, byte reg) {
 
   while (Wire.available()) { // slave may send less than requested
     readOneDate = Wire.read();  // receive a byte as character
-        if (showPrint == 1)  {
-          String sreg = String(readOneDate, HEX);
-          if (readOneDate < 0x10)
-            sreg = "0" + sreg;
-          sreg.toUpperCase();
-    
-          if (acont > 15) {
-            Serial.print("\n");      // print the character
-            acont = 0;
-          }
-          Serial.print( sreg  + " ");
-        }
+    if (showPrint == 1)  {
+      String sreg = String(readOneDate, HEX);
+      if (readOneDate < 0x10)
+        sreg = "0" + sreg;
+      sreg.toUpperCase();
+
+      if (acont > 15) {
+        Serial.print("\n");      // print the character
+        acont = 0;
+      }
+      Serial.print( sreg  + " ");
+    }
     Wire.endTransmission();  // stop transmitting
     delay(1);
   }
@@ -100,7 +100,7 @@ void Read_24LC16B_EEPROM() {
   int DataBlockSize = 0;
   crc.reset();
   Read_ChkSum = 0;
-  
+
   if (showPrint == 1)  {
     Serial.print("allSize = " + String(allSize, HEX) + "\r\n");
   }
@@ -115,14 +115,14 @@ void Read_24LC16B_EEPROM() {
       Serial.print( "         00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F\r\n");
       Serial.print("\r\n (W) CRC32 = " + String(crc.finalize(), HEX) + "\r\n");
     }
-   
+
     Read_I2C_Block(EEPROM_Addr, 0x00, BlockData , sizeof(BlockData) );
     EEPROM_Addr++;
   }
 
   Read_ChkSum = crc.finalize();
   crc.reset();
-  
+
   //  int fixAddr = 0;
   //  Serial.print( "00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F\r\n");
   //
@@ -151,7 +151,15 @@ void Read_24LC16B_EEPROM() {
   //      Serial.print("\r\nOK!!\r\n");
 
   //Read_I2C(EEPROM_Addr , 0x00);
+}
 
 
-
+void Chk_Now_Ver()
+{
+  crc.reset();
+  Read_ChkSum = 0;
+  for (int i = 0 ; i < sizeof(BinFile) ; i++)
+    crc.update(pgm_read_byte_near(BinFile+i));
+  Read_ChkSum = crc.finalize();
+  crc.reset();
 }

@@ -15,6 +15,7 @@ void Write_24LC16B_EEPROM();
 void Read_24LC16B_EEPROM();
 void Init_PV3109K();
 void Catch_Open_Camera_Button();
+void Chk_Now_Ver();
 
 int ledPin = 13;      // select the pin for the LED
 int Arduino_Address = 196;
@@ -26,6 +27,8 @@ CRC32 crc;
 uint32_t  Write_ChkSum ;
 uint32_t  Read_ChkSum ;
 
+
+
 void setup() {
   int ledPin = 13;      // select the pin for the LED
   pinMode(ledPin, OUTPUT);
@@ -35,8 +38,9 @@ void setup() {
   Serial.print("Start Wating Burn Command:\r\n");
   digitalWrite(ledPin, V_Done);
   pinMode(2, INPUT);           // set pin to input
-
 }
+
+
 
 void Read_Voltage() {
   ////  read the value from the sensor:
@@ -64,15 +68,18 @@ void loop() {
     delay(150);
     Write_24LC16B_EEPROM();
     Init_PV3109K();
-    
+
   }
   else if (inMsg == "BurnChk") {
     digitalWrite(ledPin, V_Action);
-    delay(150);
+    delay(200);
     Write_24LC16B_EEPROM();
     delay(200);
     Read_24LC16B_EEPROM();
-
+//    Serial.print("Write_ChkSum = " + String(Write_ChkSum, HEX) + "\r\n");
+//    delay(100);
+//    Serial.print("Read_ChkSum = " + String(Read_ChkSum, HEX) + "\r\n");
+//    delay(100);
     if (Write_ChkSum != Read_ChkSum)
       Serial.print("Error on CheckSum !!\r\n");
 
@@ -99,21 +106,26 @@ void loop() {
 
     if (Write_ChkSum != Read_ChkSum)
       Serial.print("Error on CheckSum !!\r\n");
-      
+
     Init_PV3109K();
   }
   else if (inMsg == "OCam") {
     digitalWrite(ledPin, V_Action);
-    wdt_disable();
     //Serial.print("\r\nOpen Camera\r\n");
   }
   else if (inMsg == "CCam") {
     digitalWrite(ledPin, V_Done);
-    wdt_disable();
     //Serial.print("\r\nClose Camera\r\n");
   }
+  else if (inMsg == "ChkSum") {
+    Chk_Now_Ver();
+    Serial.print( "\r\nCheckSum(CRC32) = " + String(Read_ChkSum, HEX) + "\r\n");
+  }
+
+
   if (inMsgLength != 0) {
-    if ( (inMsg == "OCam") || (inMsg == "CCam") ) {
+    if ( (inMsg == "OCam") || (inMsg == "CCam") || (inMsg == "ChkSum") ) {
+      wdt_disable();
       //Serial.print("\r\nNo Read Voltage\r\n");
     }
     else {
